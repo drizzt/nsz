@@ -3,6 +3,29 @@ from nsz.FileExistingChecks import CreateTargetDict
 from nsz.nut import Print
 import os
 import re
+import json
+import unicodedata
+
+
+TITLE_CACHE = json.load(open("titles.json")) if os.path.exists("titles.json") else {}
+FILE_NON_ASCII = re.compile(r"[^a-zA-Z0-9@#%&',.\s\-\[\]\(\)\+]")
+
+
+def strip_accents(s):
+	return ''.join(c for c in unicodedata.normalize('NFD', s)
+		       if unicodedata.category(c) != 'Mn')
+
+
+def findTitleById(id):
+        shortTitle = id[:-4]
+        for obj in TITLE_CACHE.values():
+                if "id" in obj and obj["id"] is not None and obj["id"][:-4] == shortTitle:
+                        if "name" in obj and obj["name"] is not None:
+                                return " ".join(FILE_NON_ASCII.sub("", strip_accents(obj["name"])).split()), obj["region"]
+                        else:
+                                break
+        return "", ""
+
 
 def isOnWhitelist(args, file):
 	if not args.undupe_whitelist == "" and re.match(args.undupe_whitelist, file):
@@ -77,7 +100,16 @@ def undupe(args, argOutFolder):
 			if args.undupe_rename or args.undupe_hardlink:
 				for file in version_value:
 					if not isOnWhitelist(args, file):
-						newName = str(argOutFolder.joinpath("["+titleID_key+"][v"+str(version_key)+"]"+Path(file).suffix))
+						title, region = findTitleById(titleID_key)
+						if title and region:
+							title += " "
+							region = "["+region+"]"
+						# FIXME get it from control.nacp
+						else:
+							Print.info("[RENAME] [ERROR_TITLEID_NOT_FOUND] " + file)
+							continue
+						outFolder = argOutFolder if argOutFolder else Path(file).parent
+						newName = str(outFolder.joinpath(title + "["+titleID_key+"]"+region+"[v"+str(version_key)+"]"+Path(file).suffix))
 						if args.undupe_hardlink:
 							if Path(newName).is_file():
 								if Path(file).samefile(Path(newName)):
