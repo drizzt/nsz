@@ -56,8 +56,8 @@ def CreateTargetDict(targetFolder, args, extension, filesAtTarget = {}, alreadyE
 		try:
 			filePath_str = str(filePath)
 			if (isGame(filePath) or filePath.suffix == ".nspz" or filePath.suffix == ".nsx") and (extension == None or filePath.suffix == extension):
-				Print.info('{0}'.format(filePath))
-				Print.info('Extract TitleID/Version: {0} '.format(filePath.name))
+				Print.debug('{0}'.format(filePath))
+				Print.debug('Extract TitleID/Version: {0} '.format(filePath.name))
 				filesAtTarget[filePath.name.lower()] = filePath_str
 				extractedIdVersion = ExtractTitleIDAndVersion(filePath, args)
 				if extractedIdVersion == None:
@@ -75,7 +75,7 @@ def CreateTargetDict(targetFolder, args, extension, filesAtTarget = {}, alreadyE
 				else:
 					titleIDEntry[version].append(filePath_str)
 				alreadyExists[titleID] = titleIDEntry
-				Print.info('=> {0} {1}'.format(titleID, version))
+				Print.debug('=> {0} {1}'.format(titleID, version))
 		except BaseException as e:
 			Print.info("")
 			Print.exception()

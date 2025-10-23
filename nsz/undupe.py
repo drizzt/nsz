@@ -113,7 +113,7 @@ def undupe(args, argOutFolder):
 						if args.undupe_hardlink:
 							if Path(newName).is_file():
 								if Path(file).samefile(Path(newName)):
-									Print.info("[HARDLINK] [SKIPPED] " + newName)
+									Print.debug("[HARDLINK] [SKIPPED] " + newName)
 								else:
 									Print.info("[HARDLINK] [ERROR_ALREADY_EXIST] " + newName)
 							else:
@@ -125,7 +125,7 @@ def undupe(args, argOutFolder):
 						if args.undupe_rename:
 							if Path(newName).is_file():
 								if Path(file).samefile(Path(newName)):
-									Print.info("[RENAME] [SKIPPED] " + newName)
+									Print.debug("[RENAME] [SKIPPED] " + newName)
 								else:
 									Print.info("[RENAME] [ERROR_ALREADY_EXIST] " + newName)
 							else:
