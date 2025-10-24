@@ -99,38 +99,37 @@ def undupe(args, argOutFolder):
 						Print.info("Keeping " + file)
 			if args.undupe_rename or args.undupe_hardlink:
 				for file in version_value:
-					if not isOnWhitelist(args, file):
-						title, region = findTitleById(titleID_key)
-						if title and region:
-							title += " "
-							region = "["+region+"]"
-						# FIXME get it from control.nacp
+					title, region = findTitleById(titleID_key)
+					if title and region:
+						title += " "
+						region = "["+region+"]"
+					# FIXME get it from control.nacp
+					else:
+						Print.info("[RENAME] [ERROR_TITLEID_NOT_FOUND] " + file)
+						continue
+					outFolder = argOutFolder if argOutFolder else Path(file).parent
+					newName = str(outFolder.joinpath(title + "["+titleID_key+"]"+region+"[v"+str(version_key)+"]"+Path(file).suffix))
+					if args.undupe_hardlink:
+						if Path(newName).is_file():
+							if Path(file).samefile(Path(newName)):
+								Print.debug("[HARDLINK] [SKIPPED] " + newName)
+							else:
+								Print.info("[HARDLINK] [ERROR_ALREADY_EXIST] " + newName)
 						else:
-							Print.info("[RENAME] [ERROR_TITLEID_NOT_FOUND] " + file)
-							continue
-						outFolder = argOutFolder if argOutFolder else Path(file).parent
-						newName = str(outFolder.joinpath(title + "["+titleID_key+"]"+region+"[v"+str(version_key)+"]"+Path(file).suffix))
-						if args.undupe_hardlink:
-							if Path(newName).is_file():
-								if Path(file).samefile(Path(newName)):
-									Print.debug("[HARDLINK] [SKIPPED] " + newName)
-								else:
-									Print.info("[HARDLINK] [ERROR_ALREADY_EXIST] " + newName)
+							if args.undupe_dryrun:
+								Print.info("[DRYRUN] [HARDLINK]: " + "os.link(" + file + ", " + newName)
+							elif Path(file).is_file():
+								Print.info("[HARDLINK]: " + "os.link(" + file+  ", " + newName)
+								os.link(file, newName)
+					if args.undupe_rename:
+						if Path(newName).is_file():
+							if Path(file).samefile(Path(newName)):
+								Print.debug("[RENAME] [SKIPPED] " + newName)
 							else:
-								if args.undupe_dryrun:
-									Print.info("[DRYRUN] [HARDLINK]: " + "os.link(" + file + ", " + newName)
-								elif Path(file).is_file():
-									Print.info("[HARDLINK]: " + "os.link(" + file+  ", " + newName)
-									os.link(file, newName)
-						if args.undupe_rename:
-							if Path(newName).is_file():
-								if Path(file).samefile(Path(newName)):
-									Print.debug("[RENAME] [SKIPPED] " + newName)
-								else:
-									Print.info("[RENAME] [ERROR_ALREADY_EXIST] " + newName)
-							else:
-								if args.undupe_dryrun:
-									Print.info("[DRYRUN] [RENAME]: " + "os.rename(" + file + ", " + newName)
-								elif Path(file).is_file():
-									Print.info("[RENAME]: " + "os.rename(" + file+  ", " + newName)
-									os.rename(file, newName)
+								Print.info("[RENAME] [ERROR_ALREADY_EXIST] " + newName)
+						else:
+							if args.undupe_dryrun:
+								Print.info("[DRYRUN] [RENAME]: " + "os.rename(" + file + ", " + newName)
+							elif Path(file).is_file():
+								Print.info("[RENAME]: " + "os.rename(" + file+  ", " + newName)
+								os.rename(file, newName)
