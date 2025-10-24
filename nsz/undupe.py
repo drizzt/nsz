@@ -119,7 +119,7 @@ def undupe(args, argOutFolder):
 							else:
 								if args.undupe_dryrun:
 									Print.info("[DRYRUN] [HARDLINK]: " + "os.link(" + file + ", " + newName)
-								else:
+								elif Path(file).is_file():
 									Print.info("[HARDLINK]: " + "os.link(" + file+  ", " + newName)
 									os.link(file, newName)
 						if args.undupe_rename:
@@ -131,6 +131,6 @@ def undupe(args, argOutFolder):
 							else:
 								if args.undupe_dryrun:
 									Print.info("[DRYRUN] [RENAME]: " + "os.rename(" + file + ", " + newName)
-								else:
+								elif Path(file).is_file():
 									Print.info("[RENAME]: " + "os.rename(" + file+  ", " + newName)
 									os.rename(file, newName)
