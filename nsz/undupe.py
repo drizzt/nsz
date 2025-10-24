@@ -49,13 +49,14 @@ def undupe(args, argOutFolder):
 
 			if args.undupe_old_versions and version_key < maxVersion:
 				for file in list(version_value):
+					if file.endswith((".xci", ".xcz")):
+						continue
 					if not isOnWhitelist(args, file):
 						if args.undupe_dryrun:
 							Print.info("[DRYRUN] [DELETE] [OLD_VERSION]: " + file)
 						else:
 							os.remove(file)
 							Print.info("[DELETED] [OLD_VERSION]: " + file)
-				continue
 
 
 			if not args.undupe_blacklist == "":
