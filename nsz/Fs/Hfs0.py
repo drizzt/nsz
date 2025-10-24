@@ -141,7 +141,7 @@ class Hfs0(Pfs0):
 			nameOffset = self.readInt32() # just the offset
 			name = stringTable[nameOffset:stringEndOffset].decode('utf-8').rstrip(' \t\r\n\0')
 			stringEndOffset = nameOffset
-			Print.info(f'[OPEN  ]     {name} {hex(size)} bytes at {hex(offset)}')
+			Print.debug(f'[OPEN  ]     {name} {hex(size)} bytes at {hex(offset)}')
 
 			self.readInt32() # junk data
 
