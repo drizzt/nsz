@@ -12,6 +12,18 @@ As an alternative to this tool NSC_Builder also supports compressing NSP to NSZ 
 
 XCZ files are functionally identical to XCI files. The file extension difference is to alert the user that it contains compressed NCZ files. NCZ files can be mixed with NCA files in the same container.
 
+## --keep trailer
+
+With `--keep` the NSZ/XCZ gets a trailer appended after the container. It holds every byte of the source NSP/XCI not stored in a container file (headers, hash tables, gamecard certificate, padding, trailing fill), so decompression restores a file with the same SHA256 as the source. Readers that do not know the trailer only follow the PFS0/HFS0 offsets and ignore it.
+
+```
+[zstd stream: all gap bytes concatenated]
+[zstd frame: JSON map]
+[footer: u64 gapStreamSize, u64 mapSize, magic b"NSZKEEP1"]
+```
+
+The JSON map is `{"version": 1, "size": N, "sha256": hex, "segments": [...]}`. Segments tile the source file in order. `[offset, length]` is a gap: the next `length` bytes of the gap stream. `[offset, length, partition, index]` is the file at position `index` of `partition` in the container, copied as-is. `[offset, length, partition, index, 1]` is the same but the file is a NCZ to decompress. `partition` is the root HFS0 partition name for XCZ and `""` for NSZ. Files are referenced by position because a partition can hold several files with the same name.
+
 ## NCZ
 
 These are compressed NCA files. The NCAs are decrypted then compressed using zStandard.

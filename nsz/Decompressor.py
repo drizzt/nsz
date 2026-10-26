@@ -5,7 +5,7 @@ from nsz.nut import Print, aes128
 from zstandard import ZstdDecompressor
 from nsz.Fs import factory, Pfs0, Hfs0, Nsp, Xci
 from nsz.PathTools import changeExtension, isCompressedGameFile, isNspNsz, isXciXcz
-from nsz import Header, BlockDecompressorReader, FileExistingChecks
+from nsz import Header, BlockDecompressorReader, FileExistingChecks, KeepTrailer
 import os
 import enlighten
 
@@ -483,6 +483,126 @@ def __decompressNcz(
     return (0, hexHash)
 
 
+class __HashWriter:
+    def __init__(self, f):
+        self.f = f
+        self.hash = sha256()
+        self.pos = 0
+
+    def write(self, data):
+        if self.f is not None:
+            self.f.write(data)
+        self.hash.update(data)
+        self.pos += len(data)
+
+    def tell(self):
+        return self.pos
+
+
+def __rebuildExact(
+    filePath,
+    write,
+    outputDir,
+    fixPadding,
+    statusReportInfo,
+    pleaseNoPrint,
+):
+    # Returns False when filePath has no --keep trailer or it is not used
+    trailer = KeepTrailer.readTrailer(str(filePath))
+    if trailer is None:
+        return False
+    if fixPadding:
+        # A fixed padding header is not the original file, rebuild it normally
+        Print.info(
+            "--fix-padding given, ignoring --keep trailer of %s" % filePath,
+            pleaseNoPrint=pleaseNoPrint,
+        )
+        return False
+    outPath = None
+    if write:
+        extension = ".nsp" if isNspNsz(Path(filePath)) else ".xci"
+        outPath = changeExtension(filePath, extension)
+        if outputDir is not None:
+            outPath = str(Path(outputDir).joinpath(Path(outPath).name))
+        Print.info(
+            "Exact rebuild %s -> %s" % (filePath, outPath),
+            pleaseNoPrint=pleaseNoPrint,
+        )
+    gapOffset, keepMap = trailer
+    container = factory(Path(filePath))
+    container.open(str(filePath), "rb")
+    gapReader = KeepTrailer.GapReader(str(filePath), gapOffset)
+    outFile = None
+    try:
+        files = {(p, i): f for p, i, f in KeepTrailer.containerFiles(container)}
+        if outPath is not None:
+            os.makedirs(os.path.dirname(os.path.abspath(outPath)), exist_ok=True)
+            outFile = open(outPath, "wb")
+        out = __HashWriter(outFile)
+        for segment in keepMap["segments"]:
+            offset, length = segment[0], segment[1]
+            if out.tell() != offset:
+                raise ValueError("Invalid --keep trailer segment order")
+            if len(segment) == 2:
+                while length > 0:
+                    chunkSize = min(KeepTrailer.CHUNK_SZ, length)
+                    out.write(gapReader.read(chunkSize))
+                    length -= chunkSize
+                continue
+            nspf = files[(segment[2], segment[3])]
+            if len(segment) == 5:
+                written, hexHash = __decompressNcz(
+                    nspf,
+                    out,
+                    statusReportInfo,
+                    pleaseNoPrint,
+                    None,
+                    None,
+                    None,
+                    Path(nspf._path).stem + ".nca",
+                )
+                if written != length:
+                    raise VerificationException(
+                        "{0} decompressed to {1} bytes but {2} were expected".format(
+                            nspf._path, written, length
+                        )
+                    )
+                continue
+            nspf.seek(0)
+            while length > 0:
+                chunk = nspf.read(min(KeepTrailer.CHUNK_SZ, length))
+                if not chunk:
+                    raise IOError("Unexpected end of {0}".format(filePath))
+                out.write(chunk)
+                length -= len(chunk)
+        if out.tell() != keepMap["size"]:
+            raise ValueError("Invalid --keep trailer size")
+        hexHash = out.hash.hexdigest()
+        Print.info(hexHash, "SHA256", pleaseNoPrint=pleaseNoPrint)
+        if hexHash != keepMap["sha256"]:
+            Print.info("{0}".format(filePath), "MISMATCH", pleaseNoPrint=pleaseNoPrint)
+            raise VerificationException(
+                "Exact rebuild SHA256 {0} does not match original {1}".format(
+                    hexHash, keepMap["sha256"]
+                )
+            )
+        Print.info("{0}".format(filePath), "VERIFIED", pleaseNoPrint=pleaseNoPrint)
+    except BaseException:
+        # A partial or mismatching output is not the original, do not leave it
+        if outFile is not None:
+            outFile.close()
+            Path(outPath).unlink(missing_ok=True)
+        raise
+    finally:
+        if outFile is not None:
+            outFile.close()
+        gapReader.close()
+        container.close()
+    if outPath is not None and statusReportInfo is None:
+        Print.progress("Complete", {"filePath": str(outPath)})
+    return True
+
+
 def __decompressNsz(
     filePath,
     outputDir,
@@ -494,6 +614,10 @@ def __decompressNsz(
     statusReportInfo,
     pleaseNoPrint,
 ):
+    if __rebuildExact(
+        filePath, write, outputDir, fixPadding, statusReportInfo, pleaseNoPrint
+    ):
+        return
     container = Nsp.Nsp()
     container.open(str(filePath), "rb")
     fileHashes = FileExistingChecks.ExtractHashes(container)
@@ -649,6 +773,10 @@ def __decompressXcz(
     statusReportInfo,
     pleaseNoPrint,
 ):
+    if __rebuildExact(
+        filePath, write, outputDir, fixPadding, statusReportInfo, pleaseNoPrint
+    ):
+        return
     container = Xci.Xci()
     container.open(str(filePath), "rb")
 

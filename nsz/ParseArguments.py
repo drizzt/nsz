@@ -62,7 +62,7 @@ class ParseArguments:
             "--keep",
             action="store_true",
             default=False,
-            help="Keep all useless files and partitions during compression to allow bit-identical recreation",
+            help="Keep all useless files and partitions during compression and append the data needed to restore the bit-identical NSP/XCI on decompression",
         )
         parser.add_argument(
             "-F",

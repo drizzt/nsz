@@ -5,6 +5,7 @@ from traceback import format_exc
 from zstandard import ZstdCompressionParameters, ZstdCompressor
 from nsz.SectionFs import isNcaPacked, sortedFs
 from multiprocessing import Process, Manager
+from nsz import KeepTrailer
 from nsz.Fs import Pfs0, Hfs0, Nca, Nsp, Type, Xci
 import enlighten
 
@@ -453,6 +454,8 @@ def blockCompressNsp(
                 id,
             )
 
+        if keep:
+            KeepTrailer.appendTrailer(container, filePath, nszPath)
         Print.progress("Complete", {"filePath": str(nszPath)})
         sys.stdout.flush()
     except BaseException as ex:
@@ -520,6 +523,8 @@ def blockCompressXci(
                     Print.info(f"{partitionIn._path} to {hex(alignedSize)}", "RESIZE")
                     xci.hfs0.addpos += alignedSize
 
+        if keep:
+            KeepTrailer.appendTrailer(container, filePath, xczPath)
         Print.progress("Complete", {"filePath": str(xczPath)})
         sys.stdout.flush()
     except BaseException as ex:

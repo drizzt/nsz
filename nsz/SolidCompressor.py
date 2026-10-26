@@ -1,6 +1,7 @@
 import sys
 from traceback import format_exc
 from nsz.SectionFs import isNcaPacked, sortedFs
+from nsz import KeepTrailer
 from nsz.Fs import Pfs0, Hfs0, Nca, Nsp, Type, Xci
 from nsz.nut import Keys, Print
 from zstandard import (
@@ -300,6 +301,8 @@ def solidCompressNsp(
                 pleaseNoPrint,
             )
 
+        if keep:
+            KeepTrailer.appendTrailer(container, filePath, nszPath, pleaseNoPrint)
         Print.progress("Complete", {"filePath": str(nszPath)})
         sys.stdout.flush()
     except BaseException as ex:
@@ -375,6 +378,8 @@ def solidCompressXci(
                     )
                     xci.hfs0.addpos += alignedSize
 
+        if keep:
+            KeepTrailer.appendTrailer(container, filePath, xczPath, pleaseNoPrint)
         Print.progress("Complete", {"filePath": str(xczPath)})
         sys.stdout.flush()
     except BaseException as ex:
